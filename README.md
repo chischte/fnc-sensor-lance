@@ -150,9 +150,10 @@ ist die erste gueltige Messung noch ungeheizt und ohne Korrektur.
 `humidity` / `humidity_rh` bleiben Rohwerte. Pro Messung werden der manuelle
 Offset `humidity_offset_rh` und `sht_heater_elapsed_ms` (Zeit der SHT45-Messung
 seit Ende der maximalen Heizkonversion) in QSPI, API, SQLite und CSV gespeichert.
-Im Zeitfenster von 60 bis unter 65 Sekunden nach der Heizkonversion gilt
-+1.00 Prozentpunkt rF; ausserhalb dieses Fensters und bei Fehlern gilt kein
-Offset. Das ist eine vorlaeufige manuelle Korrektur, keine absolute Kalibrierung.
+Fuer gueltige Messungen ab 60 Sekunden nach der Heizkonversion gilt
++1.00 Prozentpunkt rF, auch bei verzoegerter Erfassung nach 65 Sekunden.
+Vor dem ersten Heizzyklus und bei Fehlern gilt kein Offset. Das ist eine
+vorlaeufige manuelle Korrektur, keine absolute Kalibrierung.
 
 Webansicht (`humidity_corrected`) und Viewer (`humidity_corrected_rh`) zeigen
 nur Rohwert plus gespeicherten Offset, begrenzt auf 0 bis 100 %rF. Es gibt keine

@@ -65,9 +65,9 @@ void SensorManager::readSht(Measurement& measurement, uint32_t now) {
     shtReading_.readAt = now;
     shtReading_.valid = sht45_.read(shtReading_.temperature, shtReading_.humidity, now);
     shtReading_.heaterElapsedMs = shtReading_.valid ? sht45_.heaterElapsedMs() : -1;
-    const bool cooled = shtReading_.heaterElapsedMs >=
-        static_cast<int32_t>(Config::SHT45_HEATER_COOLDOWN_MS) &&
-        shtReading_.heaterElapsedMs < static_cast<int32_t>(Config::SHT45_HEATER_INTERVAL_MS);
+    // Later valid readings remain cooled, even when acquisition is delayed.
+    const bool cooled = shtReading_.valid && shtReading_.heaterElapsedMs >=
+        static_cast<int32_t>(Config::SHT45_HEATER_COOLDOWN_MS);
     shtReading_.offset = cooled ? Config::SHT45_HUMIDITY_OFFSET_RH : 0.0f;
   }
   // Keep the last scheduled reading during heating; preserve its original timestamp.

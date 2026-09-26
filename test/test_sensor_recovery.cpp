@@ -194,5 +194,30 @@ int main() {
   }
   assert(shtUpdates == 10 && fastUpdates > 120);
   assert(MachineControl_RTDTempProbe.selectedChannels == (1U << 1));
+
+  // A delayed acquisition must keep the correction after the cooldown window.
+  fakeSht = FakeSht{};
+  fakeScd = FakeScdState{};
+  SensorManager delayed;
+  delayed.begin(0);
+  const uint32_t firstReadAt = 8000;
+  const uint32_t skippedReadAt = firstReadAt + 2 * interval;
+  bool checkedDelayedOffset = false;
+  for (uint32_t time = 10; time <= firstReadAt + 4 * interval; time += 10) {
+    delayed.poll(time);
+    if (time < firstReadAt ||
+        (time - firstReadAt) % Config::MEASUREMENT_INTERVAL_MS != 0 ||
+        time == skippedReadAt) continue;
+    Measurement sample;
+    delayed.read(sample, time);
+    if (time >= skippedReadAt + Config::MEASUREMENT_INTERVAL_MS) {
+      assert(sample.humidityValid);
+      assert(sample.humidityOffset == Config::SHT45_HUMIDITY_OFFSET_RH);
+    }
+    if (sample.shtHeaterElapsedMs >= static_cast<int32_t>(interval)) {
+      checkedDelayedOffset = true;
+    }
+  }
+  assert(checkedDelayedOffset);
   return 0;
 }
