@@ -493,8 +493,9 @@ def draw(fig: "plt.Figure", box_axes: list, chart_axes: list,
          range_axis: "plt.Axes", footer_text: "plt.Text",
          preserve_view: bool = False, data_cache=None,
          skip_unchanged: bool = False) -> None:
-    preserved_x_limits = (
-        [axis.get_xlim() for axis in chart_axes] if preserve_view else None
+    preserved_limits = (
+        [(axis.get_xlim(), axis.get_ylim()) for axis in chart_axes]
+        if preserve_view else None
     )
 
     try:
@@ -516,11 +517,14 @@ def draw(fig: "plt.Figure", box_axes: list, chart_axes: list,
     draw_value_boxes(box_axes, last)
     for ax, s in zip(chart_axes, SERIES):
         plot_series(ax, df, s)
-    if preserved_x_limits:
-        for axis, series, x_limits in zip(chart_axes, SERIES, preserved_x_limits):
+    if preserved_limits:
+        for axis, series, (x_limits, y_limits) in zip(chart_axes, SERIES, preserved_limits):
             axis.set_xlim(x_limits)
             format_zoomed_xaxis(axis)
-            set_y_axis(axis, series)
+            if _state["adaptive_y"]:
+                set_y_axis(axis, series)
+            else:
+                axis.set_ylim(y_limits)
     draw_range_selector(range_axis)
 
     footer_text.set_text(
