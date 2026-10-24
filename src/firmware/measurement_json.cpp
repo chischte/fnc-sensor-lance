@@ -37,9 +37,7 @@ void appendMeasurementJson(String& json, const Measurement& measurement,
   appendHumidityJson(json, measurement);
   json += ",\"scd_humidity\":" +
           nullableNumber(measurement.scdHumidity, measurement.scdHumidityValid);
-  json += ",\"outertemp\":" +
-          nullableNumber(measurement.outerTemperature,
-                         measurement.outerTemperatureValid);
+  json += ",\"outertemp\":null";
   json += ",\"scdtemp\":" + nullableNumber(measurement.scdTemperature,
                                               measurement.co2Valid);
   json += ",\"scd_offset\":" + nullableNumber(measurement.scdTemperatureOffset,
@@ -54,17 +52,6 @@ void appendMeasurementJson(String& json, const Measurement& measurement,
   } else {
     json += "null";
   }
-  json += ",\"rtd_outer_raw\":" + String(measurement.outerRaw);
-  json += ",\"rtd_outer_config_before\":" + String(measurement.outerDiagnostics.configBefore);
-  json += ",\"rtd_outer_config_after\":" + String(measurement.outerDiagnostics.configAfter);
-  json += ",\"rtd_config_recoveries\":" + String(measurement.outerDiagnostics.recoveries);
-  if (measurement.rtdComparison) {
-    const String suffix = measurement.rtdComparisonTwoWire ? "_2wire" : "_60hz";
-    json += ",\"rtd_comparison\":{\"outer" + suffix + "\":" +
-        nullableNumber(measurement.outerComparisonTemperature, !measurement.outerComparisonFault);
-    json += ",\"outer_raw" + suffix + "\":" + String(measurement.outerComparisonRaw);
-    json += ",\"outer_fault" + suffix + "\":" + String(measurement.outerComparisonFault) + "}";
-  }
   json += ",\"valid\":{\"co2\":";
   json += booleanJson(measurement.co2Valid);
   json += ",\"boxtemp\":";
@@ -73,9 +60,8 @@ void appendMeasurementJson(String& json, const Measurement& measurement,
   json += booleanJson(measurement.humidityValid);
   json += ",\"scd_humidity\":";
   json += booleanJson(measurement.scdHumidityValid);
-  json += ",\"outertemp\":";
-  json += booleanJson(measurement.outerTemperatureValid);
-  json += "},\"faults\":{\"rtd_outer\":" + String(measurement.outerFault) + "}}";
+  // Keep the former temperature field so existing loggers read absent PT100 as NULL.
+  json += ",\"outertemp\":false},\"faults\":{}}";
 }
 
 void appendHistoryMeasurementJson(String& json,
@@ -89,8 +75,6 @@ void appendHistoryMeasurementJson(String& json,
   appendHumidityJson(json, measurement);
   json += ",\"scd_humidity\":" +
           nullableNumber(measurement.scdHumidity, measurement.scdHumidityValid);
-  json += ",\"outertemp\":" +
-          nullableNumber(measurement.outerTemperature,
-                         measurement.outerTemperatureValid);
+  json += ",\"outertemp\":null";
   json += '}';
 }

@@ -5,12 +5,9 @@
 namespace Config {
 
 // Hardware mapping
+constexpr int I2C_SDA_PIN = 8;
+constexpr int I2C_SCL_PIN = 9;
 constexpr uint8_t SHT45_I2C_ADDRESS = 0x44;
-constexpr uint8_t RTD_OUTER_CHANNEL = 1;
-constexpr float RTD_REFERENCE_OHMS = 400.0f;
-constexpr float RTD_NOMINAL_OHMS = 100.0f;
-constexpr float RTD_MIN_TEMPERATURE_C = -100.0f;
-constexpr float RTD_MAX_TEMPERATURE_C = 200.0f;
 constexpr float HUMIDITY_MIN_RH = 0.0f;
 constexpr float HUMIDITY_MAX_RH = 100.0f;
 constexpr uint32_t I2C_CLOCK_HZ = 100000;
@@ -44,17 +41,22 @@ constexpr size_t HTTP_STREAM_BUFFER_BYTES = 512;
 // SCD41 installation settings. Adjust after calibration in the final enclosure.
 // Historical offset matched to the former inner PT100 on 2026-09-08.
 constexpr float SCD41_TEMPERATURE_OFFSET_C = 2.2f;
-// Optional paired converter comparison after startup. Zero disables it.
-constexpr uint32_t RTD_DIAGNOSTIC_FIRST_SEQUENCE = 7;
-constexpr uint32_t RTD_DIAGNOSTIC_SAMPLES = 0;
-constexpr bool RTD_DIAGNOSTIC_TWO_WIRE = false;
 constexpr uint16_t SCD41_ALTITUDE_M = 450; // Site altitude; pressure input would override this.
 // Closed chambers normally do not see fresh 400 ppm air regularly, so ASC is disabled.
 constexpr bool SCD41_ASC_ENABLED = false;
 
-// QSPI append-only recovery buffer. The older file is retained across one rotation.
+// Flash append-only recovery buffer. The older file is retained across one rotation.
+#ifdef ARDUINO_ARCH_ESP32
+constexpr size_t PERSISTENT_LOG_MAX_BYTES = 1536U * 1024U;
+constexpr size_t OTA_MAX_FILE_BYTES = 2U * 1024U * 1024U;
+#else
 constexpr size_t PERSISTENT_LOG_MAX_BYTES = 4U * 1024U * 1024U;
 constexpr size_t OTA_MAX_FILE_BYTES = 5U * 1024U * 1024U;
-constexpr const char* FIRMWARE_VERSION = "2.0.15";
+#endif
+#ifdef ARDUINO_ARCH_ESP32
+constexpr const char* FIRMWARE_VERSION = "3.0.0-esp32s3";
+#else
+constexpr const char* FIRMWARE_VERSION = "3.0.0-portenta";
+#endif
 
 }  // namespace Config

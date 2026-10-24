@@ -1,6 +1,9 @@
 #include "firmware/application.h"
 
 #include <Arduino.h>
+#ifdef ARDUINO_ARCH_ESP32
+#include "firmware/esp32_hardware.h"
+#endif
 
 #include "firmware/time_utils.h"
 
@@ -18,6 +21,9 @@ Application::Application()
 void Application::begin() {
   beginSerial();
   storage_.begin();
+#ifdef ARDUINO_ARCH_ESP32
+  beginEsp32Hardware();
+#endif
   const uint32_t now = millis();
   sensors_.begin(now);
   measurements_.begin(now);

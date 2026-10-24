@@ -14,58 +14,8 @@ namespace {
 constexpr uint8_t OTA_PARTITION = 2;
 constexpr uint8_t USER_DATA_PARTITION = 4;
 constexpr uint32_t BOOT_ID_FALLBACK_MASK = 0xA5C3417D;
-constexpr char LOG_PATH[] = "/data/MEASUREMENTS.NDJSON";
-constexpr char OLD_LOG_PATH[] = "/data/MEASUREMENTS.OLD";
 constexpr char BOOT_ID_PATH[] = "/data/BOOT.ID";
-constexpr const char* BACKLOG_PATHS[] = {OLD_LOG_PATH, LOG_PATH};
-constexpr size_t BACKLOG_FILE_COUNT =
-    sizeof(BACKLOG_PATHS) / sizeof(BACKLOG_PATHS[0]);
 }  // namespace
-
-bool BacklogReader::begin(bool storageReady, bool currentOnly) {
-  close();
-  nextFileIndex_ = currentOnly ? BACKLOG_FILE_COUNT - 1 : 0;
-  finished_ = !storageReady;
-  return storageReady && openNextFile();
-}
-
-size_t BacklogReader::read(uint8_t* buffer, size_t capacity) {
-  while (file_) {
-    const size_t bytesRead = fread(buffer, 1, capacity, file_);
-    if (bytesRead) {
-      return bytesRead;
-    }
-    fclose(file_);
-    file_ = nullptr;
-    openNextFile();
-  }
-  return 0;
-}
-
-bool BacklogReader::isFinished() const {
-  return finished_;
-}
-
-void BacklogReader::close() {
-  if (file_) {
-    fclose(file_);
-    file_ = nullptr;
-  }
-  finished_ = true;
-}
-
-bool BacklogReader::openNextFile() {
-  while (nextFileIndex_ < BACKLOG_FILE_COUNT) {
-    file_ = fopen(BACKLOG_PATHS[nextFileIndex_], "r");
-    ++nextFileIndex_;
-    if (file_) {
-      finished_ = false;
-      return true;
-    }
-  }
-  finished_ = true;
-  return false;
-}
 
 void QspiStorage::begin() {
   rootDevice_ = mbed::BlockDevice::get_default_instance();
@@ -132,37 +82,6 @@ uint32_t QspiStorage::nextBootId() {
   return bootId;
 }
 
-void QspiStorage::append(const Measurement& measurement, uint32_t bootId) {
-  if (!dataReady_) {
-    return;
-  }
-
-  rotateLogIfNeeded();
-  FILE* file = fopen(LOG_PATH, "a");
-  if (!file) {
-    dataReady_ = false;
-    return;
-  }
-
-  String line;
-  line.reserve(220);
-  appendMeasurementJson(line, measurement, bootId);
-  line += '\n';
-  if (fwrite(line.c_str(), 1, line.length(), file) != line.length()) {
-    dataReady_ = false;
-  }
-  fflush(file);
-  fclose(file);
-}
-
-bool QspiStorage::isDataReady() const {
-  return dataReady_;
-}
-
-bool QspiStorage::isOtaReady() const {
-  return otaReady_;
-}
-
 bool QspiStorage::mountPartition(
     uint8_t partition, const char* mountName, const char* description,
     mbed::MBRBlockDevice*& partitionDevice,
@@ -183,15 +102,4 @@ bool QspiStorage::mountPartition(
   Serial.print(description);
   Serial.println(ready ? " ready" : " unavailable");
   return ready;
-}
-
-void QspiStorage::rotateLogIfNeeded() {
-  struct stat status {};
-  if (stat(LOG_PATH, &status) ||
-      static_cast<size_t>(status.st_size) <
-          Config::PERSISTENT_LOG_MAX_BYTES) {
-    return;
-  }
-  remove(OLD_LOG_PATH);
-  rename(LOG_PATH, OLD_LOG_PATH);
 }

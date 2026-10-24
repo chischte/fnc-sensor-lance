@@ -1,5 +1,38 @@
 # fastnchip-sensors
 
+Aktuelles Ziel: **ESP32-S3-DEV-KIT-N8R8**, ab 24.10.2026.
+SHT45 und SCD41: SDA **GPIO 8**, SCL **GPIO 9**, Versorgung **3.3 V**.
+PT100 ist aus der aktiven Firmware entfernt.
+
+**Hardwaretest erfolgreich:** ESP32-S3 laeuft mit SHT45 und SCD41,
+WLAN, LittleFS-Messpuffer und OTA. Auch der Betrieb ohne USB mit externer
+5-V-Versorgung wurde erfolgreich geprueft. Testprotokoll:
+[ESP32-S3 Hardwaretest vom 24.10.2026](docs/esp32s3-hardware-test-2026-10-24.md).
+
+Der vorherige Portenta-Machine-Control-Stand ist mit dem lokalen Git-Tag
+`portenta-machine-control-final` (`e215ccc`) markiert.
+Details: [Hardwarewechsel und OTA](docs/hardware-migration-esp32s3.md).
+
+## ESP32-S3 installieren
+
+1. `include/wifi-credentials.example.h` nach `../wifi-credentials.h` kopieren
+   und WLAN-Zugangsdaten eintragen.
+2. Bauen: `pio run` (Standard: `esp32s3`).
+3. Erstinstallation per USB: `pio run -t upload --upload-port COMx`.
+4. IP-Adresse mit `pio device monitor --port COMx` ablesen.
+5. Spaetere OTA-Updates: `http://<ip>/update` und
+   `.pio/build/esp32s3/firmware.bin` waehlen, oder
+   `./upload_firmware.ps1 -DeviceUrl http://<ip>`.
+
+Logger und Viewer funktionieren weiter. Der Flash-Puffer verwendet jetzt LittleFS.
+SHT45-Heizzyklus, Sensorparameter und Messintervalle bleiben bestehen.
+
+## Historische Portenta-Dokumentation bis 2.0.15
+
+Die folgenden Abschnitte beschreiben den frueheren Aufbau einschliesslich PT100,
+QSPI und `.ota`-Format; fuer ESP32-S3 gilt die Anleitung oben.
+
+
 Messsystem fuer eine Klimakammer auf dem Arduino Portenta Machine Control:
 
 - SHT45 fuer Inbox-Temperatur und relative Feuchte

@@ -1,10 +1,8 @@
 #include "firmware/sensor_manager.h"
 
-#include <Arduino_PortentaMachineControl.h>
 #include <SensirionErrors.h>
 
 #include "config.h"
-#include "firmware/rtd_driver_diagnostics.h"
 #include "firmware/time_utils.h"
 
 namespace {
@@ -21,11 +19,8 @@ void printScdError(const char* operation, int16_t error) {
 }  // namespace
 
 void SensorManager::begin(uint32_t now) {
-  MachineControl_RTDTempProbe.begin(THREE_WIRE);
   sht45_.begin(now);
   shtReading_.readAt = now - Config::SHT45_READ_INTERVAL_MS;
-  Serial.print("RTD outer=");
-  Serial.println(Config::RTD_OUTER_CHANNEL);
   startInitialization(PRIMARY_I2C_BUS, now);
 }
 
@@ -53,11 +48,6 @@ void SensorManager::poll(uint32_t now) {
 void SensorManager::read(Measurement& measurement, uint32_t now) {
   readScd(measurement, now);
   readSht(measurement, now);
-  readRtd(Config::RTD_OUTER_CHANNEL, measurement.outerTemperature,
-          measurement.outerTemperatureValid, measurement.outerFault);
-  measurement.outerRaw = lastRtdRawCount();
-  measurement.outerDiagnostics = lastRtdDiagnostics();
-  compareRtdModes(measurement);
 }
 
 void SensorManager::readSht(Measurement& measurement, uint32_t now) {
@@ -80,27 +70,6 @@ void SensorManager::readSht(Measurement& measurement, uint32_t now) {
   measurement.shtHeaterElapsedMs = shtReading_.heaterElapsedMs;
 }
 
-void SensorManager::compareRtdModes(Measurement& measurement) {
-  if (measurement.sequence < Config::RTD_DIAGNOSTIC_FIRST_SEQUENCE ||
-      measurement.sequence >= Config::RTD_DIAGNOSTIC_FIRST_SEQUENCE +
-                                  Config::RTD_DIAGNOSTIC_SAMPLES) {
-    return;
-  }
-  measurement.rtdComparison = true;
-  measurement.rtdComparisonTwoWire = Config::RTD_DIAGNOSTIC_TWO_WIRE;
-  if (measurement.rtdComparisonTwoWire) {
-    setRtdLeadCompensation(false);
-  } else {
-    setRtdFilter50Hz(false);
-  }
-  bool valid = false;
-  readRtd(Config::RTD_OUTER_CHANNEL, measurement.outerComparisonTemperature,
-          valid, measurement.outerComparisonFault);
-  measurement.outerComparisonRaw = lastRtdRawCount();
-  setRtdFilter50Hz(true);
-  setRtdLeadCompensation(true);
-}
-
 bool SensorManager::isReady() const {
   return ready_;
 }
@@ -115,7 +84,9 @@ void SensorManager::startInitialization(uint8_t busIndex, uint32_t now) {
   scdSerialNumber_ = 0;
   busIndex_ = busIndex;
   TwoWire& bus = busForIndex(busIndex_);
+#ifndef ARDUINO_ARCH_ESP32
   bus.begin();
+#endif
   bus.setClock(Config::I2C_CLOCK_HZ);
   scd4x_.begin(bus, SCD41_I2C_ADDR_62);
   scd4x_.wakeUp();
@@ -181,10 +152,12 @@ void SensorManager::finishInitialization(uint32_t now) {
 }
 
 void SensorManager::tryNextBus(uint32_t now) {
+#ifndef ARDUINO_ARCH_ESP32
   if (busIndex_ == PRIMARY_I2C_BUS) {
     startInitialization(SECONDARY_I2C_BUS, now);
     return;
   }
+#endif
   initializationState_ = InitializationState::idle;
   lastInitializationAt_ = now;
   Serial.println("SCD4x unavailable; retry scheduled");
@@ -219,23 +192,6 @@ void SensorManager::readScd(Measurement& measurement, uint32_t now) {
   errorCount_ = 0;
 }
 
-void SensorManager::readRtd(uint8_t channel, float& value, bool& valid,
-                            uint8_t& fault) {
-  MachineControl_RTDTempProbe.selectChannel(channel);
-  value = MachineControl_RTDTempProbe.readTemperature(
-      Config::RTD_NOMINAL_OHMS, Config::RTD_REFERENCE_OHMS);
-  fault = MachineControl_RTDTempProbe.readFault();
-  valid = !fault && lastRtdDiagnostics().configurationValid && isfinite(value) &&
-          value >= Config::RTD_MIN_TEMPERATURE_C &&
-          value <= Config::RTD_MAX_TEMPERATURE_C;
-  if (fault) {
-    MachineControl_RTDTempProbe.clearFault();
-  }
-  if (!valid) {
-    value = NAN;
-  }
-}
-
 void SensorManager::recordScdError(const char* operation, int16_t error,
                                    uint32_t now) {
   printScdError(operation, error);
@@ -247,7 +203,11 @@ void SensorManager::recordScdError(const char* operation, int16_t error,
 }
 
 TwoWire& SensorManager::busForIndex(uint8_t busIndex) {
+#ifdef ARDUINO_ARCH_ESP32
+  return Wire;
+#else
   return busIndex == PRIMARY_I2C_BUS ? Wire : Wire1;
+#endif
 }
 
 const char* SensorManager::busName(uint8_t busIndex) const {

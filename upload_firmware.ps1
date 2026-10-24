@@ -1,17 +1,14 @@
-# Upload firmware to Portenta via WiFi OTA
-# Usage: .\upload_firmware.ps1
-#
-# Requires: pio run  (builds firmware.bin AND firmware.ota via make_ota.py)
+param(
+    [string]$DeviceUrl = "http://192.168.31.168",
+    [ValidateSet("esp32s3", "portenta_h7_m7")]
+    [string]$Environment = "esp32s3"
+)
 
-$ota = "$PSScriptRoot\.pio\build\portenta_h7_m7\firmware.ota"
-$bin = "$PSScriptRoot\.pio\build\portenta_h7_m7\firmware.bin"
-$url = "http://192.168.31.168/update"
-
-# OTA requires the packaged .ota file; a raw .bin is not a valid fallback.
-if (Test-Path $ota) {
-    $file = $ota
-} else {
-    Write-Host "firmware.ota not found. Run 'pio run' first." -ForegroundColor Red
+$extension = if ($Environment -eq "esp32s3") { "bin" } else { "ota" }
+$file = Join-Path $PSScriptRoot ".pio\build\$Environment\firmware.$extension"
+$url = "$($DeviceUrl.TrimEnd('/'))/update"
+if (-not (Test-Path -LiteralPath $file)) {
+    Write-Error "Firmware missing. Run 'pio run -e $Environment' first."
     exit 1
 }
 
@@ -27,6 +24,7 @@ Write-Host ""
 # curl --progress-bar shows a live transfer bar in the terminal
 # -w adds transfer stats after completion
 $result = & curl.exe `
+    --fail-with-body `
     --progress-bar `
     -X POST $url `
     -F "firmware=@$file" `

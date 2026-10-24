@@ -3,13 +3,7 @@
 extern "C" { int _fltused = 0; }
 #endif
 #include "config.h"
-#include <Arduino_PortentaMachineControl.h>
 #include "firmware/sensor_manager.h"
-
-void setRtdFilter50Hz(bool) {}
-void setRtdLeadCompensation(bool) {}
-uint16_t lastRtdRawCount() { return 9000; }
-RtdDriverDiagnostics lastRtdDiagnostics() { return {0x11, 0x11, true, 0}; }
 
 void finishInitialization(SensorManager& sensor, uint32_t started) {
   sensor.poll(started + Config::SCD_WAKE_DELAY_MS);
@@ -49,7 +43,7 @@ int main() {
   for (int i = 0; i < Config::SCD_MAX_CONSECUTIVE_ERRORS; ++i) {
     Measurement disconnected;
     sensor.read(disconnected, now);
-    assert(!disconnected.co2Valid && disconnected.outerTemperatureValid);
+    assert(!disconnected.co2Valid);
     now += 5000;
   }
   assert(!sensor.isReady());
@@ -63,7 +57,6 @@ int main() {
   Measurement otherBus;
   sensor.read(otherBus, now + 6000);
   assert(otherBus.co2Valid && otherBus.scdSerialNumber == 3);
-  assert(MachineControl_RTDTempProbe.selectedChannels == (1U << 1));
 
   SensorManager combined;
   fakeSht = FakeSht{};
@@ -76,19 +69,18 @@ int main() {
   assert(both.boxTemperature > 24.9f && both.boxTemperature < 25.1f);
   assert(both.humidity > 93.9f && both.humidity < 94.1f);
   assert(both.scdHumidityValid && both.scdHumidity == 90);
-  assert(both.outerTemperatureValid);
   fakeSht.present = false;
   combined.poll(5000);
   Measurement held;
   combined.read(held, 5000);
   assert(held.humidityValid && held.humidity == both.humidity);
   assert(held.shtReadUptimeMs == both.shtReadUptimeMs);
-  assert(held.co2Valid && held.outerTemperatureValid);
+  assert(held.co2Valid);
   // At the next scheduled SHT read, a failure replaces the held value.
   combined.poll(66000);
   Measurement disconnectedSht;
   combined.read(disconnectedSht, 66000);
-  assert(!disconnectedSht.humidityValid && disconnectedSht.outerTemperatureValid);
+  assert(!disconnectedSht.humidityValid);
 
   fakeSht = FakeSht{};
   Sht45Sensor raw;
@@ -193,7 +185,6 @@ int main() {
     }
   }
   assert(shtUpdates == 10 && fastUpdates > 120);
-  assert(MachineControl_RTDTempProbe.selectedChannels == (1U << 1));
 
   // A delayed acquisition must keep the correction after the cooldown window.
   fakeSht = FakeSht{};

@@ -157,6 +157,16 @@ void WebServer::readMultipartHeaderByte(char byte) {
     startResponse(500, "text/plain", "Cannot open OTA file.");
     return;
   }
+#ifdef ARDUINO_ARCH_ESP32
+  // Content-Length includes the multipart header and closing boundary.
+  const size_t trailerBytes = boundary_.length() + 6;
+  if (expectedBodyBytes_ <= receivedBodyBytes_ + trailerBytes) {
+    firmwareUpdater_.cancelUpload();
+    startResponse(400, "text/plain", "Empty OTA payload.");
+    return;
+  }
+  firmwareUpdater_.setExpectedSize(expectedBodyBytes_ - receivedBodyBytes_ - trailerBytes);
+#endif
   clientState_ = ClientState::receivingUpload;
 }
 
@@ -393,11 +403,7 @@ void WebServer::sendResponseChunk(uint32_t now) {
     return;
   }
 
-  const bool restart = restartAfterResponse_;
   closeClient();
-  if (restart) {
-    firmwareUpdater_.restart();
-  }
 }
 
 void WebServer::startBacklog(bool currentOnly) {
@@ -474,6 +480,7 @@ bool WebServer::isReadingRequest() const {
 }
 
 void WebServer::closeClient() {
+  const bool restart = restartAfterResponse_;
   if (clientState_ == ClientState::receivingUpload) {
     firmwareUpdater_.cancelUpload();
   }
@@ -487,4 +494,8 @@ void WebServer::closeClient() {
   responseOffset_ = 0;
   restartAfterResponse_ = false;
   streamingApiHistory_ = false;
+  // A verified update must restart even if the client closes after reading its response.
+  if (restart) {
+    firmwareUpdater_.restart();
+  }
 }

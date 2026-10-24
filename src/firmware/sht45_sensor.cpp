@@ -30,10 +30,14 @@ bool checksumValid(const uint8_t* word) {
 }  // namespace
 
 void Sht45Sensor::begin(uint32_t now) {
+#ifndef ARDUINO_ARCH_ESP32
   Wire.begin();
+#endif
   Wire.setClock(Config::I2C_CLOCK_HZ);
+#ifndef ARDUINO_ARCH_ESP32
   Wire1.begin();
   Wire1.setClock(Config::I2C_CLOCK_HZ);
+#endif
   lastAttemptAt_ = now - Config::SHT45_SAMPLE_INTERVAL_MS;
   lastHeaterStartedAt_ = now;
   poll(now);
@@ -62,7 +66,9 @@ void Sht45Sensor::poll(uint32_t now) {
   valid_ = false;
   bus_ = nullptr;
   if (!startMeasurement(Wire, now)) {
+#ifndef ARDUINO_ARCH_ESP32
     startMeasurement(Wire1, now);
+#endif
   }
 }
 

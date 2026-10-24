@@ -84,12 +84,7 @@ void MeasurementController::printMeasurement(
   Serial.print(" box=");
   printValue(measurement.boxTemperature,
              measurement.boxTemperatureValid);
-  Serial.print(" outer=");
-  if (measurement.outerTemperatureValid) {
-    Serial.println(measurement.outerTemperature);
-  } else {
-    Serial.println("invalid");
-  }
+  Serial.println();
 }
 
 void MeasurementController::printValue(float value, bool valid) const {
