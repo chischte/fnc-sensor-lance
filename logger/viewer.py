@@ -1,5 +1,5 @@
 """
-fastnchip-sensors – long-term data viewer
+fnc-sensor-lance – long-term data viewer
 Reads measurements.csv and shows interactive charts for CO2, Temperature,
 and Humidity. Refreshes automatically while the logger is running.
 
