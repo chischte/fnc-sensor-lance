@@ -8,6 +8,7 @@ namespace Config {
 constexpr int I2C_SDA_PIN = 8;
 constexpr int I2C_SCL_PIN = 9;
 constexpr uint8_t SHT45_I2C_ADDRESS = 0x44;
+constexpr uint8_t SHTC3_I2C_ADDRESS = 0x70;
 constexpr float HUMIDITY_MIN_RH = 0.0f;
 constexpr float HUMIDITY_MAX_RH = 100.0f;
 constexpr uint32_t I2C_CLOCK_HZ = 100000;
@@ -54,9 +55,9 @@ constexpr size_t PERSISTENT_LOG_MAX_BYTES = 4U * 1024U * 1024U;
 constexpr size_t OTA_MAX_FILE_BYTES = 5U * 1024U * 1024U;
 #endif
 #ifdef ARDUINO_ARCH_ESP32
-constexpr const char* FIRMWARE_VERSION = "3.0.0-esp32s3";
+constexpr const char* FIRMWARE_VERSION = "3.1.2-esp32s3";
 #else
-constexpr const char* FIRMWARE_VERSION = "3.0.0-portenta";
+constexpr const char* FIRMWARE_VERSION = "3.1.0-portenta";
 #endif
 
 }  // namespace Config

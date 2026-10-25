@@ -13,7 +13,7 @@ from pathlib import Path
 BASE = Path(__file__).parent
 DB_FILE = BASE / "data" / "measurements.db"
 CSV_FILE = BASE / "data" / "measurements.csv"
-DEFAULT_URL = os.getenv("SENSOR_URL", "http://192.168.31.168")
+DEFAULT_URL = os.getenv("SENSOR_URL", "http://192.168.31.211")
 POLL_INTERVAL = float(os.getenv("POLL_INTERVAL", "5"))
 RTD_DIAGNOSTIC_COLUMNS = (
     "rtd_box_raw", "rtd_box_config_before", "rtd_box_config_after", "rtd_outer_raw",
@@ -47,7 +47,9 @@ def connect(path: Path = DB_FILE) -> sqlite3.Connection:
 
 def _add_sensor_columns(db: sqlite3.Connection) -> None:
     columns = {row[1] for row in db.execute("PRAGMA table_info(measurements)")}
-    additions = {"temp_scd_c": "REAL", "scd_temperature_offset_c": "REAL",
+    additions = {"temp_ambient_c": "REAL", "humidity_ambient_rh": "REAL",
+                 "valid_ambient_temperature": "INTEGER", "valid_ambient_humidity": "INTEGER",
+                 "temp_scd_c": "REAL", "scd_temperature_offset_c": "REAL",
                  "scd_serial": "TEXT", "humidity_scd_rh": "REAL",
                  "valid_scd_humidity": "INTEGER",
                  "temp_box_rtd_c": "REAL", "valid_box_rtd": "INTEGER",
@@ -82,6 +84,10 @@ def normalize(payload: dict) -> dict:
         "uptime_ms": int(record.get("uptime_ms", 0)),
         "co2_ppm": record.get("co2"), "temp_box_c": record.get("boxtemp"),
         "humidity_rh": record.get("humidity"), "temp_outer_c": record.get("outertemp"),
+        "temp_ambient_c": record.get("ambient_temperature"),
+        "humidity_ambient_rh": record.get("ambient_humidity"),
+        "valid_ambient_temperature": int(valid.get("ambient_temperature", record.get("ambient_temperature") is not None)),
+        "valid_ambient_humidity": int(valid.get("ambient_humidity", record.get("ambient_humidity") is not None)),
         "humidity_scd_rh": record.get("scd_humidity"),
         "valid_scd_humidity": int(valid.get("scd_humidity", record.get("scd_humidity") is not None)),
         "humidity_offset_rh": record.get("humidity_offset_rh", 0.0),
@@ -121,6 +127,8 @@ def import_csv(db: sqlite3.Connection, path: Path = CSV_FILE) -> int:
             payload = {"boot_id": 0, "sequence": sequence, "uptime_ms": sequence * 5000,
                        "co2": _number(row.get("co2_ppm")), "boxtemp": _number(row.get("temp_box_c")),
                        "humidity": _number(row.get("humidity_rh")), "outertemp": _number(row.get("temp_outer_c")),
+                       "ambient_temperature": _number(row.get("temp_ambient_c")),
+                       "ambient_humidity": _number(row.get("humidity_ambient_rh")),
                        "scd_humidity": _number(row.get("humidity_scd_rh")),
                        "humidity_offset_rh": _number(row.get("humidity_offset_rh")),
                        "sht_heater_elapsed_ms": _number(row.get("sht_heater_elapsed_ms")),
@@ -147,10 +155,11 @@ def export_csv(db: sqlite3.Connection, path: Path = CSV_FILE) -> None:
         writer = csv.writer(file)
         writer.writerow(["timestamp", "co2_ppm", "temp_box_c", "humidity_rh", "temp_outer_c",
                          "boot_id", "sequence", "valid_co2", "valid_box", "valid_humidity", "valid_outer",
-                         "humidity_scd_rh", "valid_scd_humidity", "sht_heated", "sht_cooling", "temp_box_rtd_c", "valid_box_rtd", "humidity_offset_rh", "sht_heater_elapsed_ms", "sht_read_uptime_ms"])
+                         "humidity_scd_rh", "valid_scd_humidity", "sht_heated", "sht_cooling", "temp_box_rtd_c", "valid_box_rtd", "humidity_offset_rh", "sht_heater_elapsed_ms", "sht_read_uptime_ms", "temp_ambient_c", "humidity_ambient_rh",
+                         "valid_ambient_temperature", "valid_ambient_humidity"])
         writer.writerows(db.execute("""SELECT COALESCE(device_time,received_at),co2_ppm,temp_box_c,humidity_rh,temp_outer_c,
             boot_id,sequence,valid_co2,valid_box,valid_humidity,valid_outer,
-            humidity_scd_rh,valid_scd_humidity,sht_heated,sht_cooling,temp_box_rtd_c,valid_box_rtd,humidity_offset_rh,sht_heater_elapsed_ms,sht_read_uptime_ms FROM measurements ORDER BY id"""))
+            humidity_scd_rh,valid_scd_humidity,sht_heated,sht_cooling,temp_box_rtd_c,valid_box_rtd,humidity_offset_rh,sht_heater_elapsed_ms,sht_read_uptime_ms,temp_ambient_c,humidity_ambient_rh,valid_ambient_temperature,valid_ambient_humidity FROM measurements ORDER BY id"""))
     temp.replace(path)
 
 def main() -> None:

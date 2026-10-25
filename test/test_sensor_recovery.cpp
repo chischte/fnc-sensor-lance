@@ -11,6 +11,47 @@ void finishInitialization(SensorManager& sensor, uint32_t started) {
 }
 
 int main() {
+  {
+    Shtc3Sensor ambient(Wire);
+    ambient.begin(0);
+    float temperature = NAN;
+    float humidity = NAN;
+    assert(!ambient.read(temperature, humidity, 0));
+    fakeShtc3.present = true;
+    ambient.poll(5000);
+    assert(fakeShtc3.lastCommand == 0x3517);
+    ambient.poll(5001);
+    assert(fakeShtc3.lastCommand == 0x7866);
+    ambient.poll(5013);
+    assert(!ambient.read(temperature, humidity, 5013));
+    ambient.poll(5014);
+    assert(ambient.read(temperature, humidity, 5014));
+    assert(temperature > 24.99f && temperature < 25.01f);
+    assert(humidity == 50.0f);
+    assert(fakeShtc3.lastCommand == 0xB098);
+    fakeShtc3.corrupt = true;
+    ambient.poll(10000);
+    ambient.poll(10001);
+    ambient.poll(10014);
+    assert(!ambient.read(temperature, humidity, 10014));
+    fakeShtc3.corrupt = false;
+    fakeShtc3.shortResponse = true;
+    ambient.poll(15000);
+    ambient.poll(15001);
+    ambient.poll(15014);
+    assert(!ambient.read(temperature, humidity, 15014));
+    fakeShtc3.shortResponse = false;
+    fakeShtc3.present = false;
+    ambient.poll(20000);
+    assert(!ambient.read(temperature, humidity, 20000));
+    fakeShtc3.present = true;
+    ambient.poll(25000);
+    ambient.poll(25001);
+    ambient.poll(25014);
+    assert(ambient.read(temperature, humidity, 25014));
+    assert(!ambient.read(temperature, humidity, 35014));
+    fakeShtc3 = FakeShtc3{};
+  }
   SensorManager sensor;
   sensor.begin(0);
   finishInitialization(sensor, 0);
@@ -104,6 +145,25 @@ int main() {
   raw.poll(15010);
   assert(raw.read(rawTemperature, rawHumidity, 15010) && rawHumidity == 100);
   assert(!raw.read(rawTemperature, rawHumidity, 25010));
+  if (!Config::SHT45_HEATER_ENABLED) {
+    fakeSht = FakeSht{};
+    fakeScd = FakeScdState{};
+    SensorManager unheated;
+    unheated.begin(0);
+    const uint32_t duration = 3 * Config::SHT45_READ_INTERVAL_MS;
+    for (uint32_t time = 10; time <= duration; time += 10) {
+      unheated.poll(time);
+      if (time < 8000 || (time - 8000) % Config::MEASUREMENT_INTERVAL_MS != 0) continue;
+      Measurement sample;
+      unheated.read(sample, time);
+      assert(sample.boxTemperatureValid && sample.humidityValid);
+      assert(sample.humidityOffset == 0.0f);
+      assert(sample.shtHeaterElapsedMs == -1);
+      assert(!sample.shtHeated && !sample.shtCooling);
+    }
+    assert(fakeSht.heaterCommands == 0);
+    return 0;
+  }
   // Readout requests a heater pulse; no heated/early cooldown sample is published.
   fakeSht = FakeSht{};
   Sht45Sensor heater;

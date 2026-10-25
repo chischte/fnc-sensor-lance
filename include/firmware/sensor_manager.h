@@ -6,6 +6,7 @@
 
 #include "firmware/measurement.h"
 #include "firmware/sht45_sensor.h"
+#include "firmware/shtc3_sensor.h"
 
 class SensorManager {
  public:
@@ -43,6 +44,7 @@ class SensorManager {
   };
   ShtReading shtReading_;
   Sht45Sensor sht45_;
+  Shtc3Sensor shtc3_{Wire};
   SensirionI2cScd4x scd4x_;
   InitializationState initializationState_ = InitializationState::idle;
   uint32_t stateStartedAt_ = 0;

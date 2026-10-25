@@ -37,4 +37,5 @@ void beginEsp32Hardware() {
   Serial.println(digitalRead(Config::I2C_SCL_PIN));
   printDeviceStatus(Config::SHT45_I2C_ADDRESS, "SHT45");
   printDeviceStatus(SCD41_ADDRESS, "SCD41");
+  printDeviceStatus(Config::SHTC3_I2C_ADDRESS, "SHTC3");
 }

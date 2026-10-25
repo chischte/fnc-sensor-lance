@@ -13,6 +13,10 @@ struct Measurement {
   int32_t shtHeaterElapsedMs = -1;
   bool shtHeated = false;
   bool shtCooling = false;
+  float ambientTemperature = NAN;
+  float ambientHumidity = NAN;
+  bool ambientTemperatureValid = false;
+  bool ambientHumidityValid = false;
   float scdHumidity = NAN;
   bool scdHumidityValid = false;
   float scdTemperature = NAN;

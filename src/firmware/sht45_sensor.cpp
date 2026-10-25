@@ -1,6 +1,7 @@
 #include "firmware/sht45_sensor.h"
 
 #include "config.h"
+#include "firmware/sensirion_crc.h"
 #include "firmware/time_utils.h"
 
 namespace {
@@ -15,18 +16,6 @@ static_assert(Config::SHT45_HEATER_INTERVAL_MS >=
 // Sampling and conversion run independently; allow the next conversion to finish.
 constexpr uint32_t MAX_READING_AGE_MS = 2 * Config::SHT45_SAMPLE_INTERVAL_MS;
 constexpr uint8_t RESPONSE_BYTES = 6;
-constexpr uint8_t CRC_POLYNOMIAL = 0x31;
-
-bool checksumValid(const uint8_t* word) {
-  uint8_t crc = 0xFF;
-  for (uint8_t i = 0; i < 2; ++i) {
-    crc ^= word[i];
-    for (uint8_t bit = 0; bit < 8; ++bit) {
-      crc = (crc & 0x80) ? (crc << 1) ^ CRC_POLYNOMIAL : crc << 1;
-    }
-  }
-  return crc == word[2];
-}
 }  // namespace
 
 void Sht45Sensor::begin(uint32_t now) {
@@ -102,7 +91,7 @@ void Sht45Sensor::finishMeasurement(uint32_t now) {
   for (uint8_t i = 0; i < RESPONSE_BYTES; ++i) {
     data[i] = bus_->read();
   }
-  if (!checksumValid(data) || !checksumValid(data + 3)) {
+  if (!sensirionChecksumValid(data) || !sensirionChecksumValid(data + 3)) {
     bus_ = nullptr;
     return;
   }

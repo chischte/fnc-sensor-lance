@@ -8,6 +8,18 @@ String nullableNumber(float value, bool valid) {
 const char* booleanJson(bool value) {
   return value ? "true" : "false";
 }
+void appendAmbientJson(String& json, const Measurement& measurement) {
+  json += ",\"ambient_sensor\":\"SHTC3\"";
+  json += ",\"ambient_temperature\":" +
+          nullableNumber(measurement.ambientTemperature,
+                         measurement.ambientTemperatureValid);
+  json += ",\"ambient_humidity\":" +
+          nullableNumber(measurement.ambientHumidity, measurement.ambientHumidityValid);
+  json += ",\"outertemp\":" +
+          nullableNumber(measurement.ambientTemperature,
+                         measurement.ambientTemperatureValid);
+}
+
 void appendHumidityJson(String& json, const Measurement& measurement) {
   json += ",\"sht_read_uptime_ms\":" + String(measurement.shtReadUptimeMs);
   json += ",\"humidity\":" +
@@ -37,7 +49,7 @@ void appendMeasurementJson(String& json, const Measurement& measurement,
   appendHumidityJson(json, measurement);
   json += ",\"scd_humidity\":" +
           nullableNumber(measurement.scdHumidity, measurement.scdHumidityValid);
-  json += ",\"outertemp\":null";
+  appendAmbientJson(json, measurement);
   json += ",\"scdtemp\":" + nullableNumber(measurement.scdTemperature,
                                               measurement.co2Valid);
   json += ",\"scd_offset\":" + nullableNumber(measurement.scdTemperatureOffset,
@@ -60,8 +72,13 @@ void appendMeasurementJson(String& json, const Measurement& measurement,
   json += booleanJson(measurement.humidityValid);
   json += ",\"scd_humidity\":";
   json += booleanJson(measurement.scdHumidityValid);
-  // Keep the former temperature field so existing loggers read absent PT100 as NULL.
-  json += ",\"outertemp\":false},\"faults\":{}}";
+  json += ",\"ambient_temperature\":";
+  json += booleanJson(measurement.ambientTemperatureValid);
+  json += ",\"ambient_humidity\":";
+  json += booleanJson(measurement.ambientHumidityValid);
+  json += ",\"outertemp\":";
+  json += booleanJson(measurement.ambientTemperatureValid);
+  json += "},\"faults\":{}}";
 }
 
 void appendHistoryMeasurementJson(String& json,
@@ -75,6 +92,6 @@ void appendHistoryMeasurementJson(String& json,
   appendHumidityJson(json, measurement);
   json += ",\"scd_humidity\":" +
           nullableNumber(measurement.scdHumidity, measurement.scdHumidityValid);
-  json += ",\"outertemp\":null";
+  appendAmbientJson(json, measurement);
   json += '}';
 }

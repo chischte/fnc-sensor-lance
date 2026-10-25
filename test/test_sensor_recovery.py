@@ -20,6 +20,7 @@ class SensorRecoveryTests(unittest.TestCase):
                 "-fno-rtti", "-fno-stack-protector", "-fuse-ld=lld", "-nostdlib",
                 "-Itest/fakes", "-Iinclude", "test/test_sensor_recovery.cpp",
                 "src/firmware/sensor_manager.cpp", "src/firmware/sht45_sensor.cpp",
+                "src/firmware/shtc3_sensor.cpp",
                 "-Wl,/entry:main,/subsystem:console", "-o", str(executable),
             ]
             subprocess.run(command, cwd=ROOT, check=True, capture_output=True, text=True)

@@ -13,6 +13,28 @@ Pinpositionen: [ESP32-C3 SuperMini Pinout und Schaltplan](https://dl.artronshop.
 GPIO 4/5 sind die fuer diesen Plan gewaehlte I2C-Belegung und muessen bei
 einem spaeteren Firmwarewechsel entsprechend konfiguriert werden.
 
+## Heizvergleich vom 25.10.2026
+
+Der SHT45-Heizer war mit `3.1.1-esp32s3-noheater` versuchsweise deaktiviert.
+Laut Benutzer sank die Temperaturdifferenz zwischen Inbox und Ambient auf null.
+Mit `3.1.2-esp32s3` ist der bisherige Heizzyklus wieder aktiviert.
+[Versuchsprotokoll](docs/sht45-noheater-trial-2026-10-25.md).
+
+## Sensoren ab Firmware 3.1.0
+
+- Inbox: SHT45 fuer Temperatur und Feuchte; SCD41 fuer CO2 und die gepunktete Feuchte-Vergleichskurve.
+- Ambient: SHTC3 (`0x70`) fuer Aussentemperatur und Aussenfeuchte; beide Kurven sind gestrichelt.
+- Am aktuell eingesetzten ESP32-S3 gilt weiterhin **SDA GPIO8, SCL GPIO9, 3,3 V**.
+- Der SHTC3 wird alle 5 Sekunden abgefragt und nach spaeterem Anstecken automatisch erkannt.
+  Ohne gueltige Messung liefern API, Logger und Viewer fehlende Werte.
+- Der Viewer startet mit 30 Minuten Verlauf und adaptiver Skalierung, damit aktuelle
+  Werte auch ausserhalb der bisherigen Kammer-Skalen sichtbar bleiben.
+- Neue SQLite-/CSV-Felder: `temp_ambient_c`, `humidity_ambient_rh` und zugehoerige
+  Validitaetsflags. Historische PT100-Werte bleiben in `temp_outer_c` erhalten und
+  werden nicht als SHTC3-Messungen angezeigt.
+
+Protokoll und Umrechnung: [Sensirion SHTC3-Datenblatt](https://sensirion.com/resource/datasheet/shtc3).
+
 ## Aktueller Firmwarestand
 
 Aktuelles Ziel: **ESP32-S3-DEV-KIT-N8R8**, ab 24.10.2026.

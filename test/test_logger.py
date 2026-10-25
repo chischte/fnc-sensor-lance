@@ -13,6 +13,26 @@ class LoggerTests(unittest.TestCase):
         self.db = logger.connect(Path(self.temp.name) / "test.db")
     def tearDown(self):
         self.db.close(); self.temp.cleanup()
+    def test_ambient_values_roundtrip_without_relabeling_old_pt100_rows(self):
+        logger.insert(self.db, {"boot_id": 1, "sequence": 1, "outertemp": 19.0})
+        logger.insert(self.db, {"boot_id": 2, "sequence": 1,
+                               "ambient_temperature": 21.25, "ambient_humidity": 0.0,
+                               "outertemp": 21.25})
+        logger.insert(self.db, {"boot_id": 2, "sequence": 2,
+                               "ambient_temperature": None, "ambient_humidity": None})
+        rows = self.db.execute(
+            "SELECT temp_ambient_c,humidity_ambient_rh,valid_ambient_temperature,"
+            "valid_ambient_humidity FROM measurements ORDER BY id").fetchall()
+        self.assertEqual([(None, None, 0, 0), (21.25, 0.0, 1, 1), (None, None, 0, 0)], rows)
+        path = Path(self.temp.name) / "ambient.csv"
+        logger.export_csv(self.db, path)
+        with path.open() as stream:
+            import csv
+            exported = list(csv.DictReader(stream))
+        self.assertEqual("21.25", exported[1]["temp_ambient_c"])
+        self.assertEqual("0.0", exported[1]["humidity_ambient_rh"])
+        self.assertEqual("", exported[0]["temp_ambient_c"])
+
     def test_live_logging_uses_current_without_fetching_history(self):
         payload = {"measurement": {"boot_id": 30, "sequence": 1, "humidity": 94}}
         with patch.object(logger, "connect", return_value=self.db), \

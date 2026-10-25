@@ -20,12 +20,14 @@ void printScdError(const char* operation, int16_t error) {
 
 void SensorManager::begin(uint32_t now) {
   sht45_.begin(now);
+  shtc3_.begin(now);
   shtReading_.readAt = now - Config::SHT45_READ_INTERVAL_MS;
   startInitialization(PRIMARY_I2C_BUS, now);
 }
 
 void SensorManager::poll(uint32_t now) {
   sht45_.poll(now);
+  shtc3_.poll(now);
   if (ready_) {
     // A replacement can acknowledge I2C while still being in idle mode.
     if (hasElapsed(now, lastScdMeasurementAt_,
@@ -48,6 +50,10 @@ void SensorManager::poll(uint32_t now) {
 void SensorManager::read(Measurement& measurement, uint32_t now) {
   readScd(measurement, now);
   readSht(measurement, now);
+  const bool ambientValid = shtc3_.read(measurement.ambientTemperature,
+                                       measurement.ambientHumidity, now);
+  measurement.ambientTemperatureValid = ambientValid;
+  measurement.ambientHumidityValid = ambientValid;
 }
 
 void SensorManager::readSht(Measurement& measurement, uint32_t now) {

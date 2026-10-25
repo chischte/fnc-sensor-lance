@@ -82,18 +82,22 @@ def current_theme() -> dict:
 
 SERIES = [
     {"col": "humidity_corrected_rh", "label": "Humidity",    "unit": "%RH", "color": "#2878a8", "ymin": 85, "ymax": 100,   "step": 5,    "fmt": ".1f",
-     "line_label": "SHT45", "overlay_col": "humidity_scd_rh",
-     "overlay_color": "#78a9c4", "overlay_label": "SCD41", "overlay_style": ":"},
+     "line_label": "Inbox (SHT45)",
+     "overlay_col": "humidity_scd_rh",
+     "overlay_color": "#78a9c4", "overlay_label": "Inbox (SCD41)", "overlay_style": ":",
+     "extra_overlays": [{"col": "humidity_ambient_rh", "color": "#2878a8",
+                         "style": "--", "label": "Ambient (SHTC3)"}]},
     {"col": "co2_ppm",     "label": "CO2",        "unit": "ppm", "color": "#7b2cbf", "ymin": 0,  "ymax": 15000, "step": None, "fmt": ".0f",
      "line_label": "SCD41"},
     {"col": "temp_box_c",  "label": "Temperature", "unit": "°C",  "color": "#d65a4a", "ymin": 20, "ymax": 30,    "step": 2,    "fmt": ".1f",
      "line_label": "Inbox (SHT45)", "ticks": [20, 22, 24, 26, 28, 30],
-     "overlay_col": "temp_outer_c", "overlay_color": "#e89489"},
+     "overlay_col": "temp_ambient_c", "overlay_color": "#e89489",
+     "overlay_label": "Ambient (SHTC3)"},
 ]
 
 _state = {
-    "range": "24h",
-    "adaptive_y": False,
+    "range": "30m",
+    "adaptive_y": True,
     "dark_mode": False,
     "manual_view": False,
 }
@@ -317,7 +321,7 @@ def plot_series(ax: "plt.Axes", df: pd.DataFrame, s: dict) -> None:
     if s.get("overlay_col"):
         overlays.insert(0, {"col": s["overlay_col"], "color": s["overlay_color"],
                             "style": s.get("overlay_style", "--"),
-                            "label": s.get("overlay_label", "Ambient (PT100)")})
+                            "label": s.get("overlay_label", "Ambient")})
     for overlay in overlays:
         if overlay["col"] not in df.columns:
             continue
@@ -325,7 +329,7 @@ def plot_series(ax: "plt.Axes", df: pd.DataFrame, s: dict) -> None:
                 linewidth=1.2, linestyle=overlay["style"], zorder=4,
                 label=overlay["label"])
     if overlays or s.get("line_label"):
-        ax.legend(fontsize=7, loc="upper left", framealpha=0.7,
+        ax.legend(fontsize=8, loc="upper left", framealpha=0.7,
                   facecolor=theme["card"], edgecolor=theme["grid"],
                   labelcolor=theme["text"])
 
@@ -365,19 +369,7 @@ def draw_value_boxes(box_axes: list, last: pd.Series) -> None:
         ax.add_patch(card)
 
         val = last[s["col"]]
-        val_str = format(val, s["fmt"])
-
-        # Check for RTD overlay delta (temperature box only)
-        overlay_col = s.get("overlay_col")
-        has_delta = False
-        delta_str = ""
-        if s["col"] == "temp_box_c" and overlay_col in last.index:
-            rtd_val = last[overlay_col]
-            if pd.notna(rtd_val) and pd.notna(val):
-                delta = val - rtd_val
-                sign = "+" if delta >= 0 else ""
-                delta_str = f"{sign}{delta:.1f}"
-                has_delta = True
+        val_str = format(val, s["fmt"]) if pd.notna(val) else "--"
 
         val_y = 0.45
 
@@ -389,13 +381,12 @@ def draw_value_boxes(box_axes: list, last: pd.Series) -> None:
         ax.text(0.5, val_y, val_str,
                 ha="center", va="center", fontsize=22, fontweight="bold",
                 color=s["color"], transform=ax.transAxes, zorder=2)
-        # RTD delta (centered between value right-edge and box right wall)
-        if has_delta:
-            ax.text(0.82, val_y, delta_str,
-                    ha="center", va="center", fontsize=11, fontweight="bold",
-                    color=s.get("overlay_color", "#7bafd4"),
-                    transform=ax.transAxes, zorder=2)
-        # Unit (bottom)
+        if s["col"] == "temp_box_c":
+            ambient = last.get("temp_ambient_c")
+            if pd.notna(val) and pd.notna(ambient):
+                ax.text(0.82, val_y, f"{val - ambient:+.1f}",
+                        ha="center", va="center", fontsize=11, fontweight="bold",
+                        color=s["overlay_color"], transform=ax.transAxes, zorder=2)
         ax.text(0.5, 0.13, s["unit"],
                 ha="center", va="center", fontsize=10, fontweight="bold",
                 color=theme["muted"], transform=ax.transAxes, zorder=2)

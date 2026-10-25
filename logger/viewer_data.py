@@ -8,7 +8,7 @@ import pandas as pd
 def read_database(db, after_id=0):
     columns = {row[1] for row in db.execute("PRAGMA table_info(measurements)")}
     optional = ",".join(name if name in columns else f"NULL AS {name}"
-                        for name in ("humidity_scd_rh", "humidity_offset_rh"))
+                        for name in ("humidity_scd_rh", "humidity_offset_rh", "temp_ambient_c", "humidity_ambient_rh"))
     return pd.read_sql_query(
         f"""SELECT COALESCE(device_time,received_at) AS timestamp,
         co2_ppm,temp_box_c,humidity_rh,temp_outer_c,{optional}
@@ -18,7 +18,7 @@ def read_database(db, after_id=0):
 def read_csv(path):
     return pd.read_csv(path, usecols=lambda name: name in {
         "timestamp", "co2_ppm", "temp_box_c", "humidity_rh", "temp_outer_c",
-        "humidity_scd_rh", "humidity_offset_rh"}, on_bad_lines="skip")
+        "humidity_scd_rh", "humidity_offset_rh", "temp_ambient_c", "humidity_ambient_rh"}, on_bad_lines="skip")
 
 
 def normalize_data(df):
@@ -41,7 +41,7 @@ def normalize_data(df):
     if "temp_outer_c" not in df.columns:
         df["temp_outer_c"] = float("nan")
     df["temp_outer_c"] = pd.to_numeric(df["temp_outer_c"], errors="coerce")
-    for column in ("humidity_scd_rh", "humidity_offset_rh"):
+    for column in ("co2_ppm", "temp_box_c", "humidity_rh", "humidity_scd_rh", "humidity_offset_rh", "temp_ambient_c", "humidity_ambient_rh"):
         if column not in df.columns:
             df[column] = float("nan")
         df[column] = pd.to_numeric(df[column], errors="coerce")
